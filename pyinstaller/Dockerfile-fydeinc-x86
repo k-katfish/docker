@@ -1,0 +1,110 @@
+# Start from the existing fydeinc/pyinstaller image
+#FROM fydeinc/pyinstaller:latest
+FROM centos:7
+SHELL [ "/bin/bash", "-i", "-c" ]
+
+# Add your custom CentOS mirror
+RUN sed -i 's|^mirrorlist=|#mirrorlist=|g' /etc/yum.repos.d/CentOS-Base.repo && \
+    sed -i 's|^#baseurl=http://mirror.centos.org/centos/$releasever|baseurl=https://mirrors.watc.alaska.edu/centos/$releasever|g' /etc/yum.repos.d/CentOS-Base.repo
+
+# Add your custom CentOS SCLo RH mirror (for centos-sclo-rh)
+#RUN sed -i 's|^mirrorlist=|#mirrorlist=|g' /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo && \
+#    sed -i 's|^#baseurl=http://mirror.centos.org/centos/$releasever/sclo/x86_64/rh|baseurl=https://mirrors.watc.alaska.edu/centos/$releasever/sclo/x86_64/rh/|g' /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo
+
+# Disable the SCLO repo
+RUN yum-config-manager --disable centos-sclo-rh
+
+# Install necessary build dependencies and tools using yum
+#RUN yum update -y && \
+RUN yum install -y \
+#    yum install -y \
+    gcc \
+    perl \
+    make \
+    wget \
+    zlib-devel \
+    bzip2 \
+    bzip2-devel \
+    xz-devel \
+    ncurses-devel \
+    sqlite \
+    sqlite-devel \
+    readline-devel \
+    tk-devel \
+    gdbm-devel \
+    libffi-devel \
+    libuuid-devel
+
+# Download, build, and install OpenSSL 1.1.1
+#RUN cd /usr/local/src && \
+#    wget https://www.openssl.org/source/openssl-1.1.1w.tar.gz && \
+#    tar -xzvf openssl-1.1.1w.tar.gz && \
+#    cd openssl-1.1.1w && \
+#    ./config --prefix=/usr/local/openssl --openssldir=/usr/local/openssl && \
+#    make && \
+#    make install
+
+# Update the shared libraries to use the new OpenSSL version
+#RUN echo "/usr/local/openssl/lib" > /etc/ld.so.conf.d/openssl-1.1.1w.conf && \
+#    ldconfig
+
+# Add the new OpenSSL version to the PATH
+#ENV PATH="/usr/local/openssl/bin:$PATH"
+#ENV LD_LIBRARY_PATH="/usr/local/openssl/lib:${LD_LIBRARY_PATH}"
+
+# Ensure the system uses the new OpenSSL version
+#RUN ln -sf /usr/local/ssl/bin/openssl /usr/bin/openssl
+
+# Verify the OpenSSL version
+#RUN openssl version
+
+# Rebuild python to use the new OpenSSL version
+#RUN wget https://www.python.org/ftp/python/3.9.18/Python-3.9.18.tgz && \
+#    tar -xzvf Python-3.9.18.tgz && \
+#    cd Python-3.9.18 && \
+#    ./configure --prefix=/usr/local --with-openssl=/usr/local/openssl --enable-optimizations && \
+#    make && \
+#    make install
+
+# Reset the path to include the new Python version
+#ENV PATH="/usr/local/bin/python3:$PATH"
+
+# Verify the Python version
+#RUN python3 --version
+
+# Rebuild pip to use the new Python version
+#RUN wget https://bootstrap.pypa.io/get-pip.py && \
+#    python3 get-pip.py
+    
+# Verify the pip version
+#RUN pip3 --version
+
+# Install the necessary Python packages
+#RUN pip3 install --upgrade pip && \
+#    pip3 install \
+#    requests \
+#    pyinstaller
+
+# Force the system to use /usr/local/bin/python3
+#RUN ln -sf /usr/local/bin/python3 /usr/bin/python && \
+#    ln -sf /usr/local/bin/pip3 /usr/bin/pip && \
+#    ln -sf /usr/local/bin/python3 /usr/bin/python3 && \
+#    ln -sf /usr/local/bin/pip3 /usr/bin/pip3
+
+# Copy the build_py_openssl.sh script to the container
+COPY build_py_openssl.sh /build_py_openssl.sh
+
+# Run the build_py_openssl.sh script
+RUN chmod +x /build_py_openssl.sh && \
+    /build_py_openssl.sh
+
+# Add the entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+
+# Eff off old python
+#RUN rm -rf /opt/_internal/cpython-3.9.2
+
+# Set the entrypoint script as executable
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT [ "/entrypoint.sh" ]
